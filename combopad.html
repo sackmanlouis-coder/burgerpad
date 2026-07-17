@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Combo Pad — NFT launchpad · Robinhood Chain</title>
+<meta name="description" content="Launch an NFT collection with a token on the side. 1-50% of every combo token vests to NFT holders. Robinhood Chain.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0b0e0a;
+  --panel:#12160f;
+  --panel2:#181d13;
+  --line:#242b1c;
+  --lime:#ccff06;
+  --lime-dim:#9dc405;
+  --bun:#f2b04a;
+  --txt:#eef2e4;
+  --mut:#8a9478;
+  --bad:#ff5c5c;
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:'Fredoka',system-ui,sans-serif;font-weight:400;
+  min-height:100vh;
+}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+a{color:var(--lime);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit;color:var(--txt)}
+:focus-visible{outline:2px solid var(--lime);outline-offset:2px;border-radius:6px}
+
+/*──────── header ────────*/
+header{position:sticky;top:0;z-index:20;background:rgba(11,14,10,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar{max-width:1080px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.logo h1{font-size:22px;font-weight:700;letter-spacing:.5px;line-height:1}
+.logo h1 .c{color:var(--bun)}
+.logo h1 .p{color:var(--lime)}
+.logo .sub{display:block;font-size:11px;color:var(--mut);margin-top:3px;letter-spacing:.4px}
+.spacer{flex:1}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:12.5px;color:var(--mut);white-space:nowrap}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--mut)}
+.pill.on{color:var(--lime);border-color:var(--lime)}
+.pill.on .dot{background:var(--lime);box-shadow:0 0 8px var(--lime)}
+.pill.btn:hover{border-color:var(--lime);color:var(--lime)}
+
+/*──────── layout ────────*/
+main{max-width:1080px;margin:0 auto;padding:22px 18px 80px}
+.tabs{display:flex;gap:8px;margin-bottom:22px}
+.tab{padding:9px 22px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:14px;font-weight:500;color:var(--mut)}
+.tab.on{background:var(--lime);color:#101400;border-color:var(--lime);font-weight:600}
+.tab:not(.on):hover{border-color:var(--lime-dim);color:var(--txt)}
+
+.banner{border:1px dashed var(--bun);background:rgba(242,176,74,.06);border-radius:var(--r);padding:14px 16px;font-size:13.5px;color:var(--bun);margin-bottom:20px;line-height:1.55}
+.banner .mono{font-size:12px;color:var(--txt)}
+
+/*──────── combo split bar (signature) ────────*/
+.split{position:relative;height:26px;border-radius:999px;overflow:hidden;display:flex;border:1px solid var(--line)}
+.split .creator{background:linear-gradient(180deg,#f2b04a,#c98a2e)}
+.split .holders{position:relative;background:#1c2410;overflow:hidden}
+.split .holders .fill{position:absolute;inset:0;background:linear-gradient(180deg,var(--lime),#a5cf04);transform-origin:left;width:0%}
+.split .holders .fill::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,transparent 0 9px,rgba(0,0,0,.14) 9px 12px)}
+.split-legend{display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);margin-top:6px;gap:8px}
+.split-legend b{color:var(--txt);font-weight:500}
+.split-legend .lm b{color:var(--lime)}
+
+/*──────── cards ────────*/
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;transition:border-color .15s}
+.card:hover{border-color:var(--lime-dim)}
+.card .top{display:flex;align-items:flex-start;gap:10px}
+.card h3{font-size:17px;font-weight:600;line-height:1.25;flex:1;word-break:break-word}
+.tokpill{font-size:11.5px;font-weight:600;background:rgba(204,255,6,.1);color:var(--lime);border:1px solid rgba(204,255,6,.3);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.stat-row{display:flex;justify-content:space-between;font-size:12.5px;color:var(--mut)}
+.stat-row b{color:var(--txt);font-weight:500}
+.mintbar{height:7px;border-radius:99px;background:var(--panel2);overflow:hidden}
+.mintbar i{display:block;height:100%;background:var(--bun);border-radius:99px}
+.card .open{margin-top:auto;text-align:center;padding:10px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);font-weight:500;font-size:14px}
+.card .open:hover{border-color:var(--lime);color:var(--lime)}
+.loading,.empty{padding:60px 20px;text-align:center;color:var(--mut);font-size:14.5px;line-height:1.7}
+.loadmore{display:block;margin:24px auto 0;padding:10px 26px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--mut);font-size:13.5px}
+.loadmore:hover{border-color:var(--lime);color:var(--lime)}
+
+/*──────── launch form ────────*/
+.launch-wrap{display:grid;grid-template-columns:1fr 380px;gap:22px;align-items:start}
+@media(max-width:860px){.launch-wrap{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:22px}
+.panel h2{font-size:16px;font-weight:600;margin-bottom:16px}
+.panel h2 span{color:var(--mut);font-weight:400;font-size:13px;margin-left:8px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12.5px;color:var(--mut);margin-bottom:6px}
+.field input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:11px 13px;font-size:14.5px}
+.field input:focus{border-color:var(--lime);outline:none}
+.field .hint{font-size:11.5px;color:var(--mut);margin-top:5px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sect{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime);margin:22px 0 12px;font-weight:600}
+.sect:first-child{margin-top:0}
+.presets{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.preset{font-size:12px;padding:6px 13px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--mut)}
+.preset.on{border-color:var(--lime);color:var(--lime);background:rgba(204,255,6,.07)}
+.cta{width:100%;padding:15px;border-radius:14px;background:var(--lime);color:#101400;font-size:16px;font-weight:700;letter-spacing:.3px;margin-top:8px}
+.cta:hover{background:#d9ff33}
+.cta:disabled{background:var(--panel2);color:var(--mut);cursor:not-allowed}
+.preview{position:sticky;top:86px}
+.preview .big{font-size:15px;font-weight:600;margin-bottom:4px;word-break:break-word}
+.preview .row{display:flex;justify-content:space-between;font-size:13px;padding:9px 0;border-bottom:1px solid var(--line);color:var(--mut)}
+.preview .row:last-of-type{border-bottom:none}
+.preview .row b{color:var(--txt);font-weight:500;text-align:right}
+.preview .row b.lm{color:var(--lime)}
+.note{font-size:12px;color:var(--mut);line-height:1.6;margin-top:14px}
+
+/*──────── modal ────────*/
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:40;display:none;align-items:flex-start;justify-content:center;padding:24px 14px;overflow-y:auto}
+.overlay.show{display:flex}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:24px;width:100%;max-width:520px;margin:auto 0}
+.modal .head{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+.modal .head h2{font-size:20px;font-weight:700;flex:1;word-break:break-word}
+.modal .x{font-size:22px;color:var(--mut);line-height:1;padding:2px 8px}
+.modal .x:hover{color:var(--txt)}
+.modal .sub{font-size:12.5px;color:var(--mut);margin-bottom:16px}
+.mrow{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;padding:10px 0;border-bottom:1px solid var(--line);color:var(--mut)}
+.mrow b{color:var(--txt);font-weight:500;text-align:right}
+.mrow b.lm{color:var(--lime)}
+.qty{display:flex;align-items:center;gap:14px;justify-content:center;margin:16px 0 10px}
+.qty button{width:42px;height:42px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);font-size:20px;font-weight:600}
+.qty button:hover{border-color:var(--lime);color:var(--lime)}
+.qty .n{font-size:24px;font-weight:700;min-width:52px;text-align:center}
+.action{width:100%;padding:14px;border-radius:13px;font-size:15px;font-weight:700;margin-top:10px}
+.action.mint{background:var(--bun);color:#1a1000}
+.action.mint:hover{background:#ffc86a}
+.action.claim{background:var(--lime);color:#101400}
+.action.claim:hover{background:#d9ff33}
+.action:disabled{background:var(--panel2);color:var(--mut);cursor:not-allowed}
+.divider{border:none;border-top:1px solid var(--line);margin:18px 0}
+.addr-list{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+.addr-list a{font-size:12px;color:var(--mut)}
+.addr-list a b{color:var(--txt);font-weight:500}
+.addr-list a:hover{color:var(--lime);text-decoration:none}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--lime);color:var(--txt);padding:12px 20px;border-radius:999px;font-size:13.5px;z-index:60;display:none;max-width:92vw;text-align:center}
+.toast.err{border-color:var(--bad);color:#ffb0b0}
+
+/*──────── wallet modal ────────*/
+.wlist{display:flex;flex-direction:column;gap:9px;margin-top:14px}
+.wopt{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:13px;background:var(--panel2);border:1px solid var(--line);font-size:14.5px;font-weight:500;text-align:left}
+.wopt:hover{border-color:var(--lime)}
+.wopt img{width:26px;height:26px;border-radius:7px}
+
+footer{max-width:1080px;margin:0 auto;padding:26px 18px;border-top:1px solid var(--line);font-size:11.5px;color:var(--mut);line-height:1.8;text-align:center}
+@media(prefers-reduced-motion:no-preference){
+  .split .holders .fill{transition:width .8s cubic-bezier(.2,.8,.2,1)}
+}
+</style>
+</head>
+<body>
+
+<header><div class="bar">
+  <div class="logo">
+    <h1>🍔 <span class="c">COMBO</span> <span class="p">PAD</span></h1>
+    <span class="sub">nft launchpad · every collection ships with a token on the side · robinhood chain</span>
+  </div>
+  <div class="spacer"></div>
+  <button class="pill btn" id="walletBtn"><span class="dot"></span><span id="walletTxt">connect wallet</span></button>
+</div></header>
+
+<main>
+  <div id="setupBanner" class="banner" style="display:none">
+    <b>Setup:</b> deploy <span class="mono">ComboFactory</span> from ComboPad.sol on Robinhood Chain (Remix, solc 0.8.24, optimizer 200), then paste the address into <span class="mono">CFG.FACTORY</span> at the top of this file's script.
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" id="tabExplore">Explore</button>
+    <button class="tab" id="tabLaunch">Launch a combo</button>
+  </div>
+
+  <!-- ============ EXPLORE ============ -->
+  <section id="viewExplore">
+    <div id="feed" class="grid"></div>
+    <div id="feedMsg" class="loading">loading combos from the factory…</div>
+    <button class="loadmore" id="loadMore" style="display:none">load more</button>
+  </section>
+
+  <!-- ============ LAUNCH ============ -->
+  <section id="viewLaunch" style="display:none">
+    <div class="launch-wrap">
+      <div class="panel">
+        <div class="sect">The collection</div>
+        <div class="two">
+          <div class="field"><label>Collection name</label><input id="fNftName" placeholder="Grill Masters" maxlength="48"></div>
+          <div class="field"><label>Symbol</label><input id="fNftSym" placeholder="GRILL" maxlength="12"></div>
+        </div>
+        <div class="two">
+          <div class="field"><label>NFT supply</label><input id="fMaxSupply" type="number" min="1" max="100000" value="1000"><div class="hint">1 – 100,000</div></div>
+          <div class="field"><label>Mint price (ETH)</label><input id="fPrice" type="number" min="0" step="0.0001" value="0"><div class="hint">0 = free mint</div></div>
+        </div>
+        <div class="field"><label>Metadata base URI <span style="opacity:.6">(optional)</span></label><input id="fBaseURI" placeholder="ipfs://…/" ><div class="hint">tokenURI = base URI + token id · can be left empty</div></div>
+
+        <div class="sect">The token on the side</div>
+        <div class="two">
+          <div class="field"><label>Token name</label><input id="fTokName" placeholder="Grill Fuel" maxlength="48"></div>
+          <div class="field"><label>Symbol</label><input id="fTokSym" placeholder="FUEL" maxlength="12"></div>
+        </div>
+        <div class="field"><label>Total token supply</label><input id="fTokSupply" type="number" min="1" value="1000000000"><div class="hint">whole tokens, 18 decimals</div></div>
+        <div class="field">
+          <label>Holders' cut of supply (%)</label>
+          <input id="fHolderPct" type="number" min="1" max="50" value="25">
+          <div class="presets" id="cutPresets">
+            <button class="preset" data-p="5">5%</button>
+            <button class="preset" data-p="10">10%</button>
+            <button class="preset on" data-p="25">25%</button>
+            <button class="preset" data-p="33">33%</button>
+            <button class="preset" data-p="50">50%</button>
+          </div>
+          <div class="hint">1 &ndash; 50% of the token supply, split equally across all NFTs</div>
+        </div>
+
+        <div class="sect">Vesting</div>
+        <div class="field">
+          <label>Holders' cut vests linearly over (days)</label>
+          <input id="fVestDays" type="number" min="0" max="3650" value="90">
+          <div class="presets" id="vestPresets">
+            <button class="preset" data-d="0">instant</button>
+            <button class="preset" data-d="7">7d</button>
+            <button class="preset" data-d="30">30d</button>
+            <button class="preset on" data-d="90">90d</button>
+            <button class="preset" data-d="180">180d</button>
+            <button class="preset" data-d="365">1y</button>
+          </div>
+          <div class="hint">vesting starts the moment the combo launches · 0 = fully unlocked</div>
+        </div>
+
+        <button class="cta" id="launchBtn">Launch combo</button>
+        <div class="note">Launching deploys three contracts in one transaction: the NFT collection, the token, and the vesting vault. Your chosen cut locks in the vault for holders, the rest goes to your wallet. A 1% platform fee applies to mint revenue, and every collection carries a 1% secondary-sale royalty. No admin keys — once it's live, it runs itself.</div>
+      </div>
+
+      <div class="panel preview">
+        <h2>Combo preview</h2>
+        <div class="big" id="pvTitle">Grill Masters <span class="tokpill">$FUEL</span></div>
+        <div style="margin:14px 0 4px">
+          <div class="split"><div class="creator" id="pvBarCreator" style="width:75%"></div><div class="holders" id="pvBarHolders" style="width:25%"><div class="fill" style="width:0%"></div></div></div>
+          <div class="split-legend"><span><b id="pvCreatorPct">75%</b> → creator wallet</span><span class="lm"><b id="pvHolderPct">25%</b> → NFT holders</span></div>
+        </div>
+        <div class="row"><span>Holders' pool</span><b class="lm" id="pvPool">250,000,000</b></div>
+        <div class="row"><span>Per NFT</span><b class="lm" id="pvPerNft">250,000</b></div>
+        <div class="row"><span>Vesting term</span><b id="pvVest">90 days</b></div>
+        <div class="row"><span>Fully vested by</span><b id="pvVestEnd">—</b></div>
+        <div class="row"><span>Mint revenue if sold out</span><b id="pvRevenue">0 ETH</b></div>
+        <div class="note">Each NFT earns an equal slice of the holders' pool. Whoever holds the NFT claims what's vested — sell the NFT, sell the stream. Mint revenue shown is before the 1% platform fee.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ COMBO DETAIL MODAL ============ -->
+<div class="overlay" id="detailOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="head"><h2 id="dName">—</h2><button class="x" id="dClose" aria-label="Close">×</button></div>
+    <div class="sub" id="dSub">—</div>
+    <div style="margin:6px 0 2px">
+      <div class="split"><div class="creator" id="dBarCreator"></div><div class="holders" id="dBarHolders"><div class="fill" id="dVestFill" style="width:0%"></div></div></div>
+      <div class="split-legend"><span><b id="dCreatorPct">&mdash;</b> creator</span><span class="lm"><b id="dHolderPct">&mdash;</b> holders · <b id="dVestPct">0%</b> vested</span></div>
+    </div>
+    <div class="mrow"><span>Minted</span><b id="dMinted">—</b></div>
+    <div class="mrow"><span>Mint price</span><b id="dPrice">—</b></div>
+    <div class="mrow"><span>Per NFT allocation</span><b class="lm" id="dPerNft">—</b></div>
+    <div class="mrow"><span>Vesting</span><b id="dVestTime">—</b></div>
+
+    <div id="dMintZone">
+      <div class="qty">
+        <button id="qMinus" aria-label="Fewer">−</button>
+        <span class="n" id="qNum">1</span>
+        <button id="qPlus" aria-label="More">+</button>
+      </div>
+      <button class="action mint" id="dMintBtn">Mint · —</button>
+    </div>
+    <div id="dSoldOut" class="sub" style="display:none;text-align:center;margin-top:14px">sold out — grab one on secondary to claim its stream</div>
+
+    <hr class="divider">
+    <div id="dHolderZone">
+      <div class="mrow"><span>Your NFTs</span><b id="dYourNfts">connect wallet</b></div>
+      <div class="mrow"><span>Claimable now</span><b class="lm" id="dClaimable">—</b></div>
+      <button class="action claim" id="dClaimBtn" disabled>Claim tokens</button>
+    </div>
+    <div id="dCreatorZone" style="display:none">
+      <div class="mrow"><span>Unclaimed mint revenue</span><b id="dProceeds">—</b></div>
+      <button class="action mint" id="dWithdrawBtn">Withdraw proceeds</button>
+    </div>
+    <div class="addr-list" id="dAddrs"></div>
+  </div>
+</div>
+
+<!-- ============ WALLET MODAL ============ -->
+<div class="overlay" id="walletOverlay">
+  <div class="modal" role="dialog" aria-modal="true" style="max-width:380px">
+    <div class="head"><h2>Connect a wallet</h2><button class="x" id="wClose" aria-label="Close">×</button></div>
+    <div class="sub">Robinhood Chain · id 4663</div>
+    <div class="wlist" id="wList"><div class="sub">no wallets detected — open in a wallet browser or install one</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<footer>
+  contracts are unaudited &amp; immutable — 1% platform fee on mints · 1% royalty on secondary sales — launch and mint at your own risk<br>
+  a <a href="https://burgermoney.org" target="_blank" rel="noopener">burger money</a> joint · $BURGERS on robinhood chain
+</footer>
+
+<script>
+(() => {
+'use strict';
+
+/* ================================================================
+   CONFIG — paste the deployed ComboFactory address here
+================================================================ */
+const CFG = {
+  FACTORY: '',                                            // ← 0x… after you deploy ComboPad.sol
+  RPC: 'https://rpc.mainnet.chain.robinhood.com',
+  CHAIN_ID: 4663,
+  CHAIN_ID_HEX: '0x1237',
+  EXPLORER: 'https://robinhoodchain.blockscout.com',
+  PAGE: 24,
+};
+
+/* ================================================================
+   ABIs
+================================================================ */
+const FACTORY_ABI = [
+  'function createCombo((string nftName,string nftSymbol,uint256 maxSupply,uint256 mintPrice,string baseURI,string tokenName,string tokenSymbol,uint256 tokenSupplyWhole,uint16 holderBps,uint64 vestingSeconds) p) returns (uint256)',
+  'function comboCount() view returns (uint256)',
+  'function getCombosDesc(uint256 offset, uint256 limit) view returns ((address nft,address token,address vesting,address creator,uint64 createdAt)[])',
+  'event ComboCreated(uint256 indexed id, address nft, address token, address vesting, address indexed creator)',
+];
+const NFT_ABI = [
+  'function name() view returns (string)',
+  'function symbol() view returns (string)',
+  'function totalMinted() view returns (uint256)',
+  'function maxSupply() view returns (uint256)',
+  'function mintPrice() view returns (uint256)',
+  'function proceeds() view returns (uint256)',
+  'function creator() view returns (address)',
+  'function tokensOfOwner(address) view returns (uint256[])',
+  'function mint(uint256 quantity) payable',
+  'function withdrawProceeds()',
+];
+const TOKEN_ABI = ['function symbol() view returns (string)', 'function holderBps() view returns (uint16)'];
+const VEST_ABI = [
+  'function start() view returns (uint64)',
+  'function duration() view returns (uint64)',
+  'function perNft() view returns (uint256)',
+  'function vestedPerNft() view returns (uint256)',
+  'function claimableMany(uint256[] tokenIds) view returns (uint256)',
+  'function claimMany(uint256[] tokenIds)',
+];
+
+/* ================================================================
+   STATE
+================================================================ */
+const read = new ethers.JsonRpcProvider(CFG.RPC, CFG.CHAIN_ID, { staticNetwork: true });
+const factoryRead = CFG.FACTORY ? new ethers.Contract(CFG.FACTORY, FACTORY_ABI, read) : null;
+
+let wallets = [];          // EIP-6963 announcements
+let eip1193 = null;        // chosen raw provider
+let signer = null;
+let account = null;
+let feedOffset = 0;
+let comboCount = 0;
+let current = null;        // combo open in the detail modal
+let mintQty = 1;
+
+/* ================================================================
+   HELPERS
+================================================================ */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const short = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '—';
+
+function fmtTokens(wei) {
+  const v = Number(ethers.formatUnits(wei, 18));
+  if (v >= 1e9) return (v / 1e9).toFixed(v >= 1e10 ? 0 : 2).replace(/\.00$/, '') + 'B';
+  if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e7 ? 0 : 2).replace(/\.00$/, '') + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(v >= 1e4 ? 0 : 1).replace(/\.0$/, '') + 'K';
+  if (v >= 1) return v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return v.toPrecision(3);
+}
+function fmtEth(wei) {
+  if (wei === 0n) return 'FREE';
+  const s = ethers.formatEther(wei);
+  return (+s).toLocaleString(undefined, { maximumFractionDigits: 6 }) + ' ETH';
+}
+function fmtDur(sec) {
+  sec = Number(sec);
+  if (sec <= 0) return 'instant';
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600);
+  if (d >= 2) return d + ' days';
+  if (d >= 1) return d + 'd ' + h + 'h';
+  const m = Math.floor((sec % 3600) / 60);
+  if (h >= 1) return h + 'h ' + m + 'm';
+  return m + ' min';
+}
+function vestState(startSec, durSec) {
+  const now = Math.floor(Date.now() / 1000);
+  const dur = Number(durSec), st = Number(startSec);
+  if (dur === 0 || now >= st + dur) return { pct: 100, label: 'fully vested' };
+  const pct = Math.max(0, Math.min(100, ((now - st) / dur) * 100));
+  return { pct, label: fmtDur(st + dur - now) + ' left' };
+}
+
+let toastTimer = null;
+function toast(msg, err) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (err ? ' err' : '');
+  t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.style.display = 'none'; }, 5000);
+}
+function friendlyErr(e) {
+  const m = (e && (e.shortMessage || e.message)) || 'transaction failed';
+  if (/rejected|denied/i.test(m)) return 'transaction rejected';
+  const match = m.match(/COMBO: [^"'\\)]+/);
+  return match ? match[0] : m.slice(0, 120);
+}
+
+/* ================================================================
+   WALLET — EIP-6963 discovery + chain switch
+================================================================ */
+window.addEventListener('eip6963:announceProvider', (e) => {
+  if (!wallets.some((w) => w.info.uuid === e.detail.info.uuid)) wallets.push(e.detail);
+});
+window.dispatchEvent(new Event('eip6963:requestProvider'));
+
+function openWalletModal() {
+  const list = $('wList');
+  if (!wallets.length && window.ethereum) {
+    wallets.push({ info: { uuid: 'injected', name: 'Browser wallet', icon: '' }, provider: window.ethereum });
+  }
+  if (!wallets.length) {
+    list.innerHTML = '<div class="sub">no wallets detected — open this page in a wallet browser or install one</div>';
+  } else {
+    list.innerHTML = '';
+    wallets.forEach((w, i) => {
+      const b = document.createElement('button');
+      b.className = 'wopt';
+      b.innerHTML = (w.info.icon ? `<img src="${esc(w.info.icon)}" alt="">` : '🍔 ') + esc(w.info.name);
+      b.addEventListener('click', () => connect(i));
+      list.appendChild(b);
+    });
+  }
+  $('walletOverlay').classList.add('show');
+}
+
+async function ensureChain(p) {
+  const id = await p.request({ method: 'eth_chainId' });
+  if (id === CFG.CHAIN_ID_HEX) return;
+  try {
+    await p.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CFG.CHAIN_ID_HEX }] });
+  } catch (e) {
+    if (e && (e.code === 4902 || /unrecognized|not added/i.test(e.message || ''))) {
+      await p.request({ method: 'wallet_addEthereumChain', params: [{
+        chainId: CFG.CHAIN_ID_HEX,
+        chainName: 'Robinhood Chain',
+        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+        rpcUrls: [CFG.RPC],
+        blockExplorerUrls: [CFG.EXPLORER],
+      }] });
+    } else throw e;
+  }
+}
+
+async function connect(i) {
+  try {
+    const w = wallets[i];
+    eip1193 = w.provider;
+    const accts = await eip1193.request({ method: 'eth_requestAccounts' });
+    await ensureChain(eip1193);
+    const bp = new ethers.BrowserProvider(eip1193);
+    signer = await bp.getSigner();
+    account = ethers.getAddress(accts[0]);
+    $('walletTxt').textContent = short(account);
+    $('walletBtn').classList.add('on');
+    $('walletOverlay').classList.remove('show');
+    eip1193.on?.('accountsChanged', () => location.reload());
+    eip1193.on?.('chainChanged', () => location.reload());
+    if (current) refreshHolderZone();
+  } catch (e) {
+    toast(friendlyErr(e), true);
+  }
+}
+async function requireWallet() {
+  if (signer) { await ensureChain(eip1193); return true; }
+  openWalletModal();
+  return false;
+}
+
+/* ================================================================
+   EXPLORE FEED
+================================================================ */
+async function loadFeed(reset) {
+  if (!factoryRead) {
+    $('feedMsg').textContent = 'factory address not set yet — see the setup note above';
+    return;
+  }
+  if (reset) { feedOffset = 0; $('feed').innerHTML = ''; }
+  $('feedMsg').style.display = 'block';
+  $('feedMsg').textContent = 'loading combos from the factory…';
+  $('loadMore').style.display = 'none';
+  try {
+    comboCount = Number(await factoryRead.comboCount());
+    if (comboCount === 0) {
+      $('feedMsg').innerHTML = 'no combos yet — the grill is cold.<br>be the first: launch a combo →';
+      return;
+    }
+    const page = await factoryRead.getCombosDesc(feedOffset, CFG.PAGE);
+    const cards = await Promise.all(page.map(hydrateCombo));
+    cards.forEach((c) => { if (c) $('feed').appendChild(renderCard(c)); });
+    feedOffset += page.length;
+    $('feedMsg').style.display = 'none';
+    $('loadMore').style.display = feedOffset < comboCount ? 'block' : 'none';
+  } catch (e) {
+    console.error(e);
+    $('feedMsg').textContent = 'could not reach the factory — check your connection and reload';
+  }
+}
+
+async function hydrateCombo(c) {
+  try {
+    const nft = new ethers.Contract(c.nft, NFT_ABI, read);
+    const tok = new ethers.Contract(c.token, TOKEN_ABI, read);
+    const vest = new ethers.Contract(c.vesting, VEST_ABI, read);
+    const [name, minted, maxSupply, price, tokSym, holderBps, start, duration, perNft] = await Promise.all([
+      nft.name(), nft.totalMinted(), nft.maxSupply(), nft.mintPrice(),
+      tok.symbol(), tok.holderBps(), vest.start(), vest.duration(), vest.perNft(),
+    ]);
+    return { ...c, addrs: { nft: c.nft, token: c.token, vesting: c.vesting },
+      name, minted, maxSupply, price, tokSym, holderBps: Number(holderBps), start, duration, perNft };
+  } catch (e) { console.error('hydrate failed', c.nft, e); return null; }
+}
+
+function renderCard(c) {
+  const el = document.createElement('div');
+  el.className = 'card';
+  const mintPct = Number(c.maxSupply) ? (Number(c.minted) / Number(c.maxSupply)) * 100 : 0;
+  const vs = vestState(c.start, c.duration);
+  const cutPct = c.holderBps / 100;
+  el.innerHTML = `
+    <div class="top"><h3>${esc(c.name)}</h3><span class="tokpill">$${esc(c.tokSym)}</span></div>
+    <div>
+      <div class="split"><div class="creator" style="width:${(100 - cutPct).toFixed(1)}%"></div><div class="holders" style="width:${cutPct.toFixed(1)}%"><div class="fill" style="width:${vs.pct.toFixed(1)}%"></div></div></div>
+      <div class="split-legend"><span><b>${cutPct}%</b> to holders · ${esc(vs.label)}</span><span class="lm"><b>${fmtTokens(c.perNft)}</b> / NFT</span></div>
+    </div>
+    <div class="stat-row"><span>minted</span><b>${Number(c.minted).toLocaleString()} / ${Number(c.maxSupply).toLocaleString()}</b></div>
+    <div class="mintbar"><i style="width:${mintPct.toFixed(1)}%"></i></div>
+    <div class="stat-row"><span>mint price</span><b>${fmtEth(c.price)}</b></div>
+    <button class="open">Open combo</button>`;
+  el.querySelector('.open').addEventListener('click', () => openDetail(c));
+  return el;
+}
+
+/* ================================================================
+   DETAIL MODAL — mint + claim
+================================================================ */
+async function openDetail(c) {
+  current = c;
+  mintQty = 1;
+  $('qNum').textContent = '1';
+  $('dName').textContent = c.name;
+  $('dSub').textContent = `by ${short(c.creator)} · launched ${new Date(Number(c.createdAt) * 1000).toLocaleDateString()}`;
+  const vs = vestState(c.start, c.duration);
+  const cutPct = c.holderBps / 100;
+  $('dBarCreator').style.width = (100 - cutPct).toFixed(1) + '%';
+  $('dBarHolders').style.width = cutPct.toFixed(1) + '%';
+  $('dCreatorPct').textContent = (100 - cutPct) + '%';
+  $('dHolderPct').textContent = cutPct + '%';
+  $('dVestFill').style.width = vs.pct.toFixed(1) + '%';
+  $('dVestPct').textContent = vs.pct.toFixed(0) + '%';
+  $('dVestTime').textContent = Number(c.duration) === 0 ? 'instant unlock' : fmtDur(c.duration) + ' · ' + vs.label;
+  $('dPerNft').textContent = fmtTokens(c.perNft) + ' $' + c.tokSym;
+  $('dPrice').textContent = fmtEth(c.price);
+  updateMintZone();
+  $('dYourNfts').textContent = account ? '…' : 'connect wallet';
+  $('dClaimable').textContent = '—';
+  $('dClaimBtn').disabled = true;
+  $('dCreatorZone').style.display = 'none';
+  const ex = CFG.EXPLORER + '/address/';
+  $('dAddrs').innerHTML = `
+    <a class="mono" href="${ex}${esc(c.addrs.nft)}" target="_blank" rel="noopener"><b>NFT</b> ${esc(c.addrs.nft)}</a>
+    <a class="mono" href="${ex}${esc(c.addrs.token)}" target="_blank" rel="noopener"><b>Token</b> ${esc(c.addrs.token)}</a>
+    <a class="mono" href="${ex}${esc(c.addrs.vesting)}" target="_blank" rel="noopener"><b>Vault</b> ${esc(c.addrs.vesting)}</a>`;
+  $('detailOverlay').classList.add('show');
+  refreshHolderZone();
+}
+
+function updateMintZone() {
+  const c = current;
+  const left = Number(c.maxSupply) - Number(c.minted);
+  $('dMinted').textContent = `${Number(c.minted).toLocaleString()} / ${Number(c.maxSupply).toLocaleString()}`;
+  if (left <= 0) {
+    $('dMintZone').style.display = 'none';
+    $('dSoldOut').style.display = 'block';
+    return;
+  }
+  $('dMintZone').style.display = 'block';
+  $('dSoldOut').style.display = 'none';
+  mintQty = Math.min(mintQty, Math.min(20, left));
+  $('qNum').textContent = mintQty;
+  const total = c.price * BigInt(mintQty);
+  $('dMintBtn').textContent = 'Mint · ' + (total === 0n ? 'FREE' : fmtEth(total));
+}
+
+async function refreshHolderZone() {
+  const c = current;
+  if (!c || !account) return;
+  try {
+    const nft = new ethers.Contract(c.addrs.nft, NFT_ABI, read);
+    const vest = new ethers.Contract(c.addrs.vesting, VEST_ABI, read);
+    const ids = await nft.tokensOfOwner(account);
+    $('dYourNfts').textContent = ids.length ? `${ids.length} (#${ids.slice(0, 6).join(', #')}${ids.length > 6 ? '…' : ''})` : 'none';
+    if (ids.length) {
+      const claimable = await vest.claimableMany(ids);
+      $('dClaimable').textContent = fmtTokens(claimable) + ' $' + c.tokSym;
+      $('dClaimBtn').disabled = claimable === 0n;
+      c.myIds = ids;
+    } else {
+      $('dClaimable').textContent = '0 $' + c.tokSym;
+      $('dClaimBtn').disabled = true;
+    }
+    if (account.toLowerCase() === c.creator.toLowerCase()) {
+      const proceeds = await nft.proceeds();
+      $('dCreatorZone').style.display = 'block';
+      $('dProceeds').textContent = proceeds === 0n ? '0 ETH' : fmtEth(proceeds);
+      $('dWithdrawBtn').disabled = proceeds === 0n;
+    }
+  } catch (e) { console.error(e); }
+}
+
+async function doMint() {
+  if (!(await requireWallet())) return;
+  const c = current;
+  const btn = $('dMintBtn');
+  btn.disabled = true;
+  try {
+    const nft = new ethers.Contract(c.addrs.nft, NFT_ABI, signer);
+    const tx = await nft.mint(mintQty, { value: c.price * BigInt(mintQty) });
+    toast('minting… tx sent');
+    await tx.wait();
+    toast(`minted ${mintQty} — welcome to the combo 🍔`);
+    const fresh = new ethers.Contract(c.addrs.nft, NFT_ABI, read);
+    c.minted = await fresh.totalMinted();
+    updateMintZone();
+    refreshHolderZone();
+  } catch (e) { toast(friendlyErr(e), true); }
+  btn.disabled = false;
+}
+
+async function doClaim() {
+  if (!(await requireWallet())) return;
+  const c = current;
+  if (!c.myIds || !c.myIds.length) return;
+  const btn = $('dClaimBtn');
+  btn.disabled = true;
+  try {
+    const vest = new ethers.Contract(c.addrs.vesting, VEST_ABI, signer);
+    const tx = await vest.claimMany(c.myIds);
+    toast('claiming… tx sent');
+    await tx.wait();
+    toast('tokens claimed 🍟');
+    refreshHolderZone();
+  } catch (e) { toast(friendlyErr(e), true); btn.disabled = false; }
+}
+
+async function doWithdraw() {
+  if (!(await requireWallet())) return;
+  const btn = $('dWithdrawBtn');
+  btn.disabled = true;
+  try {
+    const nft = new ethers.Contract(current.addrs.nft, NFT_ABI, signer);
+    const tx = await nft.withdrawProceeds();
+    toast('withdrawing…');
+    await tx.wait();
+    toast('proceeds withdrawn');
+    refreshHolderZone();
+  } catch (e) { toast(friendlyErr(e), true); btn.disabled = false; }
+}
+
+/* ================================================================
+   LAUNCH FORM
+================================================================ */
+function readForm() {
+  return {
+    nftName: $('fNftName').value.trim(),
+    nftSym: $('fNftSym').value.trim().toUpperCase(),
+    maxSupply: Math.floor(+$('fMaxSupply').value || 0),
+    priceEth: $('fPrice').value.trim() || '0',
+    baseURI: $('fBaseURI').value.trim(),
+    tokName: $('fTokName').value.trim(),
+    tokSym: $('fTokSym').value.trim().toUpperCase(),
+    tokSupply: Math.floor(+$('fTokSupply').value || 0),
+    holderPct: Math.floor(+$('fHolderPct').value || 0),
+    vestDays: Math.max(0, Math.floor(+$('fVestDays').value || 0)),
+  };
+}
+
+function updatePreview() {
+  const f = readForm();
+  const name = f.nftName || 'Your collection';
+  const sym = f.tokSym || 'TOKEN';
+  $('pvTitle').innerHTML = `${esc(name)} <span class="tokpill">$${esc(sym)}</span>`;
+  const cut = Math.min(50, Math.max(1, f.holderPct || 25));
+  $('pvBarCreator').style.width = (100 - cut) + '%';
+  $('pvBarHolders').style.width = cut + '%';
+  $('pvCreatorPct').textContent = (100 - cut) + '%';
+  $('pvHolderPct').textContent = cut + '%';
+  const pool = f.tokSupply * (cut / 100);
+  $('pvPool').textContent = pool ? pool.toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' $' + esc(sym) : '—';
+  $('pvPerNft').textContent = (pool && f.maxSupply)
+    ? (pool / f.maxSupply).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' $' + esc(sym) : '—';
+  $('pvVest').textContent = f.vestDays === 0 ? 'instant unlock' : f.vestDays + ' days';
+  $('pvVestEnd').textContent = f.vestDays === 0 ? 'at launch'
+    : new Date(Date.now() + f.vestDays * 86400000).toLocaleDateString();
+  let rev = 0;
+  try { rev = Number(f.priceEth) * f.maxSupply; } catch (_) {}
+  $('pvRevenue').textContent = (rev ? rev.toLocaleString(undefined, { maximumFractionDigits: 4 }) : '0') + ' ETH';
+  document.querySelectorAll('#vestPresets .preset').forEach((b) => {
+    b.classList.toggle('on', +b.dataset.d === f.vestDays);
+  });
+  document.querySelectorAll('#cutPresets .preset').forEach((b) => {
+    b.classList.toggle('on', +b.dataset.p === f.holderPct);
+  });
+}
+
+function validateForm(f) {
+  if (!f.nftName) return 'collection name is required';
+  if (!f.nftSym) return 'collection symbol is required';
+  if (f.maxSupply < 1 || f.maxSupply > 100000) return 'NFT supply must be 1 – 100,000';
+  if (!f.tokName) return 'token name is required';
+  if (!f.tokSym) return 'token symbol is required';
+  if (f.tokSupply < 1) return 'token supply must be at least 1';
+  if (f.holderPct < 1 || f.holderPct > 50) return "holders' cut must be 1 - 50%";
+  if (f.vestDays > 3650) return 'vesting max is 3650 days';
+  try { ethers.parseEther(f.priceEth); } catch (_) { return 'mint price is not a valid ETH amount'; }
+  return null;
+}
+
+async function doLaunch() {
+  if (!CFG.FACTORY) { toast('factory address not set — see the setup note', true); return; }
+  const f = readForm();
+  const bad = validateForm(f);
+  if (bad) { toast(bad, true); return; }
+  if (!(await requireWallet())) return;
+  const btn = $('launchBtn');
+  btn.disabled = true;
+  btn.textContent = 'Launching…';
+  try {
+    const factory = new ethers.Contract(CFG.FACTORY, FACTORY_ABI, signer);
+    const tx = await factory.createCombo([
+      f.nftName, f.nftSym, f.maxSupply, ethers.parseEther(f.priceEth),
+      f.baseURI, f.tokName, f.tokSym, f.tokSupply, f.holderPct * 100, f.vestDays * 86400,
+    ]);
+    toast('combo cooking… tx sent');
+    const rc = await tx.wait();
+    let created = null;
+    for (const log of rc.logs) {
+      try {
+        const parsed = factory.interface.parseLog(log);
+        if (parsed && parsed.name === 'ComboCreated') { created = parsed.args; break; }
+      } catch (_) {}
+    }
+    toast(`${f.nftName} is live 🍔 opening it now…`);
+    switchTab('explore');
+    await loadFeed(true);
+    if (created) {
+      const combo = await hydrateCombo({
+        nft: created.nft, token: created.token, vesting: created.vesting,
+        creator: created.creator, createdAt: BigInt(Math.floor(Date.now() / 1000)),
+      });
+      if (combo) openDetail(combo);
+    }
+  } catch (e) { toast(friendlyErr(e), true); }
+  btn.disabled = false;
+  btn.textContent = 'Launch combo';
+}
+
+/* ================================================================
+   TABS + WIRING
+================================================================ */
+function switchTab(which) {
+  const explore = which === 'explore';
+  $('tabExplore').classList.toggle('on', explore);
+  $('tabLaunch').classList.toggle('on', !explore);
+  $('viewExplore').style.display = explore ? 'block' : 'none';
+  $('viewLaunch').style.display = explore ? 'none' : 'block';
+}
+
+$('tabExplore').addEventListener('click', () => switchTab('explore'));
+$('tabLaunch').addEventListener('click', () => switchTab('launch'));
+$('loadMore').addEventListener('click', () => loadFeed(false));
+$('walletBtn').addEventListener('click', () => { if (!account) openWalletModal(); });
+$('wClose').addEventListener('click', () => $('walletOverlay').classList.remove('show'));
+$('dClose').addEventListener('click', () => { $('detailOverlay').classList.remove('show'); current = null; });
+$('detailOverlay').addEventListener('click', (e) => { if (e.target === $('detailOverlay')) { $('detailOverlay').classList.remove('show'); current = null; } });
+$('walletOverlay').addEventListener('click', (e) => { if (e.target === $('walletOverlay')) $('walletOverlay').classList.remove('show'); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { $('detailOverlay').classList.remove('show'); $('walletOverlay').classList.remove('show'); current = null; }
+});
+$('qMinus').addEventListener('click', () => { mintQty = Math.max(1, mintQty - 1); updateMintZone(); });
+$('qPlus').addEventListener('click', () => { mintQty = Math.min(20, mintQty + 1); updateMintZone(); });
+$('dMintBtn').addEventListener('click', doMint);
+$('dClaimBtn').addEventListener('click', doClaim);
+$('dWithdrawBtn').addEventListener('click', doWithdraw);
+$('launchBtn').addEventListener('click', doLaunch);
+['fNftName','fNftSym','fMaxSupply','fPrice','fTokName','fTokSym','fTokSupply','fHolderPct','fVestDays']
+  .forEach((id) => $(id).addEventListener('input', updatePreview));
+document.querySelectorAll('#vestPresets .preset').forEach((b) => {
+  b.addEventListener('click', () => { $('fVestDays').value = b.dataset.d; updatePreview(); });
+});
+document.querySelectorAll('#cutPresets .preset').forEach((b) => {
+  b.addEventListener('click', () => { $('fHolderPct').value = b.dataset.p; updatePreview(); });
+});
+
+/* boot */
+if (!CFG.FACTORY) $('setupBanner').style.display = 'block';
+updatePreview();
+loadFeed(true);
+})();
+</script>
+</body>
+</html>
